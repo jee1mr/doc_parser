@@ -61,7 +61,17 @@ class DocParser():
             if self.is_question(tag):
                 output[_id]['question'] = value
             elif self.is_answer(tag):
-                output[_id]['answer'] = value
+                field_checkbox = field_tag.getparent().find(self.TAG_FIELD_CHECKBOX)
+                if field_checkbox is not None:
+                    output.pop(_id, None)
+                    parent_id = self.get_parent_id(_id)
+                    output[parent_id]['answer'] = []
+                    output[parent_id]['options'] = output[parent_id]['options'] if 'options' in output[parent_id] else []
+                    output[parent_id]['options'].append(self.get_checkbox_label(field_checkbox))
+                    if self.is_checked(field_checkbox):
+                        output[parent_id]['answer'].append(self.get_checkbox_label(field_checkbox))
+                else:
+                    output[_id]['answer'] = value
         zfile.close()
         return self.dict_to_arr(output)
 
@@ -69,6 +79,9 @@ class DocParser():
         if label[0] not in ['Q', 'A']:
             return None
         return label[1:]
+
+    def get_parent_id(self, _id):
+        return _id.split('_')[0]
 
     def get_answer_label(self, _id):
         return 'A' + _id
@@ -90,11 +103,11 @@ class DocParser():
 
     def get_checkbox_label(self, checkbox_ele):
         field_content = checkbox_ele.getparent().getparent().getparent()
-        return parse_multiline(field_content)
+        return self.parse_multiline_text(field_content).strip('☐').strip()
 
     def is_checked(self, checkbox_ele):
-        checked = checkbox_ele.find(TAG_FIELDCHECKED)
-        val = checked.get(ATTR_FIELDTAGVAL, None)
+        checked = checkbox_ele.find(self.TAG_FIELDCHECKED)
+        val = checked.get(self.ATTR_FIELDTAGVAL, None)
         return bool(val)
 
     def dict_to_arr(self, output):
