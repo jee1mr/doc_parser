@@ -61,16 +61,26 @@ class DocParser():
             if self.is_question(tag):
                 output[_id]['question'] = value
             elif self.is_answer(tag):
-                field_checkbox = field_tag.getparent().find(self.TAG_FIELD_CHECKBOX)
-                if field_checkbox is not None:
-                    output.pop(_id, None)
-                    parent_id = self.get_parent_id(_id)
-                    output[parent_id]['answer'] = []
-                    output[parent_id]['options'] = output[parent_id]['options'] if 'options' in output[parent_id] else []
-                    output[parent_id]['options'].append(self.get_checkbox_label(field_checkbox))
-                    if self.is_checked(field_checkbox):
-                        output[parent_id]['answer'].append(self.get_checkbox_label(field_checkbox))
+                if self.is_multianswer(tag):
+                    # Check if it's a checkbox
+                    field_checkbox = field_tag.getparent().find(self.TAG_FIELD_CHECKBOX)
+                    if field_checkbox is not None:
+                        output.pop(_id, None)
+                        parent_id = self.get_parent_id(_id)
+                        output[parent_id] = output[parent_id] if parent_id in output else {}
+                        output[parent_id]['answer'] = []
+                        output[parent_id]['options'] = output[parent_id]['options'] if 'options' in output[parent_id] else []
+                        output[parent_id]['options'].append(self.get_checkbox_label(field_checkbox))
+                        if self.is_checked(field_checkbox):
+                            output[parent_id]['answer'].append(self.get_checkbox_label(field_checkbox))
+                    else:
+                        # Must be additional text if no checkbox found
+                        output.pop(_id, None)
+                        parent_id = self.get_parent_id(_id)
+                        output[parent_id] = output[parent_id] if parent_id in output else {}
+                        output[parent_id]['additional_text'] = value
                 else:
+                    # Single answer
                     output[_id]['answer'] = value
         zfile.close()
         return self.dict_to_arr(output)
@@ -94,6 +104,10 @@ class DocParser():
 
     def is_answer(self, label):
         return label[0] == 'A'
+
+    def is_multianswer(self, label):
+        # if it has 1.1_a, 1.1_b like labels, then it's multi answer
+        return label[0] == 'A' and '_' in label
 
     def get_value(self, label):
         pass
